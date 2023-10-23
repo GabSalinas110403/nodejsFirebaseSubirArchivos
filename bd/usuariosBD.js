@@ -1,5 +1,6 @@
 var conexion=require("./conexion").conexion;
 var Usuario=require("../modelos/Usuario");
+var {encryptarPassword, validarPassword}=require("../middlewares/funcionesPassword");
 
 async function mostrarUsuarios(){
     var users=[];
@@ -36,6 +37,10 @@ async function buscarPorID(id){
 }
 
 async function nuevoUsuario(datos){
+    var {hash, salt} = encryptarPassword(datos.password);
+    datos.password=hash;
+    datos.salt=salt;
+    datos.admin=false;
     var user=new Usuario(null,datos);
     var error=1;
     if (user.bandera==0){
@@ -52,9 +57,22 @@ async function nuevoUsuario(datos){
 }
 
 async function modificarUsuario(datos){
+    //console.log(foto);
+    //console.log(datos.fotoVieja);
+    //console.log(datos.password);
+    //console.log(datos.passwordViejo);
     var error=1;
     var respuestaBuscar= await buscarPorID (datos.id);
     if (respuestaBuscar != undefined){
+        if(datos.password=""){
+            datos.password=datos.passwordViejo;
+            datos.salt=datos.saltViejo;
+        }
+        else {
+            var {salt, hash} = encryptarPassword(datos.password);
+            datos.password = hash;
+            datos.salt = salt;
+        }
         var user = new Usuario(datos.id, datos);
         if (user.bandera==0){
             try{
@@ -86,10 +104,38 @@ async function borrarUsuario(id){
     }
 }
 
+
+async function login(datos){
+    var user = undefined;
+    var usuarioObjeto;
+    try{
+        var  usuarios =  await conexion.where('usuario','==', datos.usuario).get();
+        if (usuarios.docs.length==0){ //no existe el usuario
+            return undefined
+        }
+        usuarios.docs.filter((doc) =>{ //El usuario SI existe
+            var validar=validarPassword(datos.password,doc.data().password,doc.data().salt);
+            if(validar){
+                usuarioObjeto=new Usuario(doc.id, doc.data());
+                if(usuarioObjeto.bandera==0){
+                    user=usuarioObjeto.obtenerDatos;
+                }
+            }
+            else 
+                return undefined;
+        });
+    } 
+    catch(err){
+        console.log("Error al iniciar sesion" +err);
+    }
+    return user;
+}
+
 module.exports={
     mostrarUsuarios,
     buscarPorID,
     nuevoUsuario,
     modificarUsuario,
-    borrarUsuario
+    borrarUsuario,
+    login
 }

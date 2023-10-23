@@ -1,14 +1,15 @@
 var ruta = require("express").Router();
+var {autorizado, admin} = require("../middlewares/funcionesPassword");
 var subirArchivosProd=require("../middlewares/subirArchivosProd");
 var { mostrarProductos,  nuevoProducto,  modificarProducto,  buscarPorIDProd,  borrarProducto } = require("../bd/productosBD");
 
-ruta.get("/mostrarProducto", async (req, res) => {
+ruta.get("/mostrarProducto", admin, async (req, res) => {
   var productos = await mostrarProductos();
   console.log(productos);
   res.render("usuarios/mostrarProducto", { productos });
 });
 
-ruta.get("/nuevoproducto", async (req, res) => {
+ruta.get("/nuevoproducto", admin, async (req, res) => {
   res.render("usuarios/nuevoProducto");
 });
 
